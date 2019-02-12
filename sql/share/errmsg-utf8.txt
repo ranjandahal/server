@@ -7937,3 +7937,12 @@ ER_UNKNOWN_DATA_TYPE
         eng "Unknown data type: '%-.64s'"
 ER_UNKNOWN_OPERATOR
         eng "Operator does not exists: '%-.128s'"
+
+ER_KEY_CONTAINS_PERIOD_FIELDS
+        eng "Key %`s should not contain period fields in order to make it WITHOUT OVERLAPS"
+
+ER_PERIOD_WITHOUT_OVERLAPS_PARTITIONED
+        eng "Period WITHOUT OVERLAPS is not implemented for partitioned tables"
+
+ER_PERIOD_WITHOUT_OVERLAPS_NON_UNIQUE
+        eng "Period WITHOUT OVERLAPS is only allowed for unique keys"
