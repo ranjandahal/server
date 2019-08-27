@@ -7476,12 +7476,12 @@ uint Field_string::max_packed_col_length(uint max_length)
 }
 
 
-uint Field_string::get_key_image(uchar *buff, uint length, imagetype type_arg)
+uint Field_string::get_key_image(uchar *buff, uint length, const uchar *ptr_arg, imagetype type_arg) const
 {
-  size_t bytes= my_charpos(field_charset(), (char*) ptr,
-                           (char*) ptr + field_length,
+  size_t bytes= my_charpos(field_charset(), (char*) ptr_arg,
+                           (char*) ptr_arg + field_length,
                            length / mbmaxlen());
-  memcpy(buff, ptr, bytes);
+  memcpy(buff, ptr_arg, bytes);
   if (bytes < length)
     field_charset()->cset->fill(field_charset(),
                                 (char*) buff + bytes,
@@ -7604,11 +7604,17 @@ longlong Field_varstring::val_int(void)
 }
 
 
-String *Field_varstring::val_str(String *val_buffer __attribute__((unused)),
+String *Field_varstring::val_str(String *val_buffer,
 				 String *val_ptr)
 {
+  return val_str(val_buffer, val_ptr, ptr);
+}
+String *Field_varstring::val_str(String *val_buffer __attribute__((unused)),
+				 String *val_ptr, const uchar *ptr_arg) const
+{
   DBUG_ASSERT(marked_for_read());
-  val_ptr->set((const char*) get_data(), get_length(), field_charset());
+  val_ptr->set((const char*) get_data(ptr_arg), get_length(ptr_arg),
+               field_charset());
   return val_ptr;
 }
 
@@ -7792,7 +7798,7 @@ uchar *Field_varstring::pack(uchar *to, const uchar *from, uint max_length)
 
    @note
    The string length is always packed little-endian.
-  
+
    @param   to         Destination of the data
    @param   from       Source of the data
    @param   param_data Length bytes from the master's field data
@@ -7804,7 +7810,7 @@ Field_varstring::unpack(uchar *to, const uchar *from, const uchar *from_end,
                         uint param_data)
 {
   uint length;
-  uint l_bytes= (param_data && (param_data < field_length)) ? 
+  uint l_bytes= (param_data && (param_data < field_length)) ?
                 (param_data <= 255) ? 1 : 2 : length_bytes;
 
   if (from + l_bytes > from_end)
@@ -7847,14 +7853,15 @@ uint Field_varstring::max_packed_col_length(uint max_length)
 }
 
 uint Field_varstring::get_key_image(uchar *buff, uint length,
-                                    imagetype type_arg)
+                                    const uchar *ptr_arg,
+                                    imagetype type_arg) const
 {
   String val;
   uint local_char_length;
   my_bitmap_map *old_map;
 
   old_map= dbug_tmp_use_all_columns(table, table->read_set);
-  val_str(&val, &val);
+  val_str(&val, &val, ptr_arg);
   dbug_tmp_restore_column_map(table->read_set, old_map);
 
   local_char_length= val.charpos(length / mbmaxlen());
@@ -8105,10 +8112,11 @@ int Field_varstring_compressed::store(const char *from, size_t length,
 }
 
 
-String *Field_varstring_compressed::val_str(String *val_buffer, String *val_ptr)
+String *Field_varstring_compressed::val_str(String *val_buffer, String *val_ptr,
+                                            const uchar *ptr_arg) const
 {
   DBUG_ASSERT(marked_for_read());
-  return uncompress(val_buffer, val_ptr, get_data(), get_length());
+  return uncompress(val_buffer, val_ptr, get_data(ptr_arg), get_length(ptr_arg));
 }
 
 
@@ -8251,7 +8259,7 @@ int Field_blob::store(const char *from,size_t length,CHARSET_INFO *cs)
     DBUG_ASSERT(!f_is_hex_escape(flags));
     DBUG_ASSERT(field_charset() == cs);
     DBUG_ASSERT(length <= max_data_length());
-    
+
     new_length= length;
     copy_length= (size_t)MY_MIN(UINT_MAX,table->in_use->variables.group_concat_max_len);
     if (new_length > copy_length)
@@ -8316,7 +8324,7 @@ int Field_blob::store(const char *from,size_t length,CHARSET_INFO *cs)
 oom_error:
   /* Fatal OOM error */
   bzero(ptr,Field_blob::pack_length());
-  return -1; 
+  return -1;
 }
 
 
@@ -8427,10 +8435,11 @@ int Field_blob::cmp_binary(const uchar *a_ptr, const uchar *b_ptr,
 
 /* The following is used only when comparing a key */
 
-uint Field_blob::get_key_image_itRAW(uchar *buff, uint length)
+uint Field_blob::get_key_image_itRAW(const uchar *ptr_arg, uchar *buff,
+                                     uint length) const
 {
-  size_t blob_length= get_length(ptr);
-  uchar *blob= get_ptr();
+  size_t blob_length= get_length(ptr_arg);
+  const uchar *blob= get_ptr(ptr_arg);
   size_t local_char_length= length / mbmaxlen();
   local_char_length= my_charpos(field_charset(), blob, blob + blob_length,
                           local_char_length);
@@ -8516,7 +8525,7 @@ int Field_blob::save_field_metadata(uchar *metadata_ptr)
 
 uint32 Field_blob::sort_length() const
 {
-  return (uint32) (get_thd()->variables.max_sort_length + 
+  return (uint32) (get_thd()->variables.max_sort_length +
                    (field_charset() == &my_charset_bin ? 0 : packlength));
 }
 
@@ -8592,9 +8601,7 @@ void Field_blob::sql_type(String &res) const
 
 uchar *Field_blob::pack(uchar *to, const uchar *from, uint max_length)
 {
-  uchar *save= ptr;
-  ptr= (uchar*) from;
-  uint32 length=get_length();			// Length of from string
+  uint32 length=get_length(from, packlength);			// Length of from string
 
   /*
     Store max length, which will occupy packlength bytes. If the max
@@ -8608,10 +8615,9 @@ uchar *Field_blob::pack(uchar *to, const uchar *from, uint max_length)
    */
   if (length > 0)
   {
-    from= get_ptr();
+    from= get_ptr(from);
     memcpy(to+packlength, from,length);
   }
-  ptr=save;					// Restore org row pointer
   return to+packlength+length;
 }
 
@@ -8619,7 +8625,7 @@ uchar *Field_blob::pack(uchar *to, const uchar *from, uint max_length)
 /**
    Unpack a blob field from row data.
 
-   This method is used to unpack a blob field from a master whose size of 
+   This method is used to unpack a blob field from a master whose size of
    the field is less than that of the slave. Note: This method is included
    to satisfy inheritance rules, but is not needed for blob fields. It
    simply is used as a pass-through to the original unpack() method for
@@ -8804,7 +8810,7 @@ int Field_enum::store(const char *from,size_t length,CHARSET_INFO *cs)
 
   /* Convert character set if necessary */
   if (String::needs_conversion_on_storage(length, cs, field_charset()))
-  { 
+  {
     uint dummy_errors;
     tmpstr.copy(from, length, cs, field_charset(), &dummy_errors);
     from= tmpstr.ptr();
@@ -8885,7 +8891,7 @@ longlong Field_enum::val_int(const uchar *real_ptr) const
 /**
    Save the field metadata for enum fields.
 
-   Saves the real type in the first byte and the pack length in the 
+   Saves the real type in the first byte and the pack length in the
    second byte of the field metadata array at index of *metadata_ptr and
    *(metadata_ptr + 1).
 
@@ -8990,7 +8996,7 @@ int Field_set::store(const char *from,size_t length,CHARSET_INFO *cs)
 
   /* Convert character set if necessary */
   if (String::needs_conversion_on_storage(length, cs, field_charset()))
-  { 
+  {
     uint dummy_errors;
     tmpstr.copy(from, length, cs, field_charset(), &dummy_errors);
     from= tmpstr.ptr();
@@ -9006,7 +9012,7 @@ int Field_set::store(const char *from,size_t length,CHARSET_INFO *cs)
     if (err || end != from+length ||
 	tmp > (ulonglong) (((longlong) 1 << typelib->count) - (longlong) 1))
     {
-      tmp=0;      
+      tmp=0;
       set_warning(WARN_DATA_TRUNCATED, 1);
       err= 1;
     }
@@ -9203,7 +9209,7 @@ uchar *Field_enum::pack(uchar *to, const uchar *from, uint max_length)
   DBUG_RETURN(pack_int(to, from, packlength));
 }
 
-const uchar *Field_enum::unpack(uchar *to, const uchar *from, 
+const uchar *Field_enum::unpack(uchar *to, const uchar *from,
                                 const uchar *from_end, uint param_data)
 {
   DBUG_ENTER("Field_enum::unpack");
@@ -9301,8 +9307,8 @@ bool Field_enum::can_optimize_keypart_ref(const Item_bool_func *cond,
 /*
   Bit field.
 
-  We store the first 0 - 6 uneven bits among the null bits 
-  at the start of the record. The rest bytes are stored in 
+  We store the first 0 - 6 uneven bits among the null bits
+  at the start of the record. The rest bytes are stored in
   the record itself.
 
   For example:
@@ -9403,7 +9409,7 @@ Field_bit::do_last_null_byte() const
 
 
 Field *Field_bit::new_key_field(MEM_ROOT *root, TABLE *new_table,
-                                uchar *new_ptr, uint32 length, 
+                                uchar *new_ptr, uint32 length,
                                 uchar *new_null_ptr, uint new_null_bit)
 {
   Field_bit *res;
@@ -9426,7 +9432,7 @@ bool Field_bit::is_equal(const Column_definition &new_field) const
          new_field.length == max_display_length();
 }
 
-                       
+
 int Field_bit::store(const char *from, size_t length, CHARSET_INFO *cs)
 {
   DBUG_ASSERT(marked_for_write_or_computed());
@@ -9525,7 +9531,7 @@ longlong Field_bit::val_int(void)
   case 7: return bits | mi_uint7korr(ptr);
   default: return mi_uint8korr(ptr + bytes_in_rec - sizeof(longlong));
   }
-}  
+}
 
 
 String *Field_bit::val_str(String *val_buffer,
@@ -9613,11 +9619,12 @@ int Field_bit::cmp_offset(my_ptrdiff_t row_offset)
 }
 
 
-uint Field_bit::get_key_image(uchar *buff, uint length, imagetype type_arg)
+uint Field_bit::get_key_image(uchar *buff, uint length, const uchar *ptr_arg, imagetype type_arg) const
 {
   if (bit_len)
   {
-    uchar bits= get_rec_bits(bit_ptr, bit_ofs, bit_len);
+    auto *bit_ptr_for_arg= ptr_arg + (bit_ptr - ptr);
+    uchar bits= get_rec_bits(bit_ptr_for_arg, bit_ofs, bit_len);
     *buff++= bits;
     length--;
   }
