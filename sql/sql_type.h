@@ -5665,7 +5665,7 @@ public:
 class Type_handler_time: public Type_handler_time_common
 {
   /* number of bytes to store TIME(N) */
-  static uint m_hires_bytes[MAX_DATETIME_PRECISION+1];
+  static const uint m_hires_bytes[MAX_DATETIME_PRECISION+1];
 public:
   static uint hires_bytes(uint dec) { return m_hires_bytes[dec]; }
   virtual ~Type_handler_time() {}
@@ -5948,9 +5948,9 @@ public:
 class Type_handler_datetime: public Type_handler_datetime_common
 {
   /* number of bytes to store DATETIME(N) */
-  static uint m_hires_bytes[MAX_DATETIME_PRECISION + 1];
+  static const uint m_hires_bytes[MAX_DATETIME_PRECISION + 1];
 public:
-  static uint hires_bytes(uint dec) { return m_hires_bytes[dec]; }
+  static constexpr uint hires_bytes(uint dec) { return m_hires_bytes[dec]; }
   virtual ~Type_handler_datetime() {}
   const Name version() const override { return m_version_mariadb53; }
   uint32 max_display_length_for_field(const Conv_source &src) const override
@@ -6101,7 +6101,7 @@ public:
 class Type_handler_timestamp: public Type_handler_timestamp_common
 {
   /* number of bytes to store second_part part of the TIMESTAMP(N) */
-  static uint m_sec_part_bytes[MAX_DATETIME_PRECISION + 1];
+  static const uint m_sec_part_bytes[MAX_DATETIME_PRECISION + 1];
 public:
   static uint sec_part_bytes(uint dec) { return m_sec_part_bytes[dec]; }
   virtual ~Type_handler_timestamp() {}

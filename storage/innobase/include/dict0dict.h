@@ -515,6 +515,10 @@ dict_foreign_find_index(
 					/*!< in: nonzero if none of
 					the columns must be declared
 					NOT NULL */
+	bool			check_period,
+					/*!< in: check if index contains
+					an application-time period
+					without overlaps*/
 	ulint*			error,	/*!< out: error code */
 	ulint*			err_col_no,
 					/*!< out: column number where
@@ -595,6 +599,10 @@ dict_foreign_qualify_index(
 					/*!< in: nonzero if none of
 					the columns must be declared
 					NOT NULL */
+	bool			check_period,
+					/*!< in: check if index contains
+					an application-time period
+					without overlaps*/
 	ulint*			error,	/*!< out: error code */
 	ulint*			err_col_no,
 					/*!< out: column number where
