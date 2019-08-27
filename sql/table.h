@@ -34,6 +34,8 @@
 #include "sql_i_s.h"
 #include "sql_type.h"               /* vers_kind_t */
 
+#include  <initializer_list>
+
 /* Structs that defines the TABLE */
 
 class Item;				/* Needed by ORDER */
@@ -796,7 +798,7 @@ struct TABLE_SHARE
 #endif
 
   /**
-    System versioning support.
+    System versioning and application-time periods support.
   */
   struct period_info_t
   {
@@ -1621,6 +1623,13 @@ public:
   int period_make_insert(Item *src, Field *dst);
   int insert_portion_of_time(THD *thd, const vers_select_conds_t &period_conds,
                              ha_rows *rows_inserted);
+  /*
+   @return -1,    lhs precedes rhs
+            0,    lhs overlaps rhs
+            1,    lhs succeeds rhs
+   */
+  static int check_period_overlaps(const KEY &lhs_key, const KEY &rhs_key,
+                                   const uchar *lhs, const uchar *rhs);
   int delete_row();
   void vers_update_fields();
   void vers_update_end();
@@ -1686,10 +1695,23 @@ typedef struct st_foreign_key_info
   LEX_CSTRING *referenced_key_name;
   List<LEX_CSTRING> foreign_fields;
   List<LEX_CSTRING> referenced_fields;
+  bool has_period;
 } FOREIGN_KEY_INFO;
 
 LEX_CSTRING *fk_option_name(enum_fk_option opt);
 bool fk_modifies_child(enum_fk_option opt);
+
+struct FOREIGN_KEY
+{
+  uint foreign_key_nr;
+  uint referenced_key_nr;
+  KEY *foreign_key;
+  KEY *referenced_key;
+  uint fields_num;
+  bool has_period;
+  enum_fk_option update_method;
+  enum_fk_option delete_method;
+};
 
 class IS_table_read_plan;
 
