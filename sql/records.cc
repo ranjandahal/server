@@ -709,3 +709,16 @@ static int rr_cmp(uchar *a,uchar *b)
   return (int) a[7] - (int) b[7];
 #endif
 }
+
+
+int read_record_func_for_rr_and_unpack(READ_RECORD *info)
+{
+  int error;
+  if ((error= info->read_record_func_and_unpack_calls(info)))
+    return error;
+
+  for (Copy_field *cp= info->copy_field; cp != info->copy_field_end; cp++)
+    (*cp->do_copy)(cp);
+
+  return error;
+}

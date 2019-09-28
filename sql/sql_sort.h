@@ -79,6 +79,7 @@ public:
   SORT_FIELD *end;
   SORT_ADDON_FIELD *addon_field; // Descriptors for companion fields.
   LEX_STRING addon_buf;          // Buffer & length of added packed fields.
+  bool set_all_read_bits;
 
   uchar *unique_buff;
   bool not_killable;
@@ -93,6 +94,7 @@ public:
   }
   void init_for_filesort(uint sortlen, TABLE *table,
                          ha_rows maxrows, bool sort_positions);
+  void  (*unpack)(TABLE *);
 };
 
 

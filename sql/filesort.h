@@ -58,6 +58,13 @@ public:
 
   Filesort_tracker *tracker;
 
+  /*
+    TRUE means all the fields of table of whose bitmap read_set is set
+         need to be read while reading records in the sort buffer.
+    FALSE otherwise
+  */
+  bool set_all_read_bits;
+
   Filesort(ORDER *order_arg, ha_rows limit_arg, bool sort_positions_arg,
            SQL_SELECT *select_arg):
     order(order_arg),
@@ -66,7 +73,9 @@ public:
     select(select_arg),
     own_select(false), 
     using_pq(false),
-    sort_positions(sort_positions_arg)
+    sort_positions(sort_positions_arg),
+    set_all_read_bits(FALSE),
+    unpack(NULL)
   {
     DBUG_ASSERT(order);
   };
@@ -74,6 +83,9 @@ public:
   ~Filesort() { cleanup(); }
   /* Prepare ORDER BY list for sorting. */
   uint make_sortorder(THD *thd, JOIN *join, table_map first_table_bit);
+
+  /* Unpack temp table columns to base table columns*/
+  void (*unpack)(TABLE *);
 
 private:
   void cleanup();
