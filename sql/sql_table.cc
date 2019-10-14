@@ -6569,14 +6569,6 @@ static int compare_uint(const uint *s, const uint *t)
   return (*s < *t) ? -1 : ((*s > *t) ? 1 : 0);
 }
 
-enum class Compare_keys : uint32_t
-{
-  Equal,
-  EqualButKeyPartLength,
-  EqualButComment,
-  NotEqual
-};
-
 Compare_keys compare_keys_but_name(const KEY *table_key, const KEY *new_key,
                                    Alter_info *alter_info, const TABLE *table,
                                    const KEY *const new_pk,
@@ -6608,42 +6600,27 @@ Compare_keys compare_keys_but_name(const KEY *table_key, const KEY *new_key,
       object with adjusted length. So below we have to check field
       indexes instead of simply comparing pointers to Field objects.
     */
-    Create_field *new_field= alter_info->create_list.elem(new_part->fieldnr);
-    if (!new_field->field ||
-        new_field->field->field_index != key_part->fieldnr - 1)
+    const Create_field &new_field=
+        *alter_info->create_list.elem(new_part->fieldnr);
+    if (!new_field.field ||
+        new_field.field->field_index != key_part->fieldnr - 1)
       return Compare_keys::NotEqual;
 
-    /*
-      If there is a change in index length due to column expansion
-      like varchar(X) changed to varchar(X + N) and has a compatible
-      packed data representation, we mark it for fast/INPLACE change
-      in index definition. InnoDB supports INPLACE for this cases
-
-      Key definition has changed if we are using a different field or
-      if the user key part length is different.
-    */
-    const Field *old_field= table->field[key_part->fieldnr - 1];
-
-    bool is_equal= key_part->field->is_equal(*new_field);
-    /* TODO: below is an InnoDB specific code which should be moved to InnoDB */
-    if (!is_equal)
+    switch (table->file->compare_key_parts(
+        *table->field[key_part->fieldnr - 1], new_field, *key_part, *new_part))
     {
-      if (!key_part->field->can_be_converted_by_engine(*new_field))
-        return Compare_keys::NotEqual;
-
-      if (!Charset(old_field->charset())
-               .eq_collation_specific_names(new_field->charset))
-        return Compare_keys::NotEqual;
-    }
-
-    if (key_part->length != new_part->length)
-    {
-      if (key_part->length != old_field->field_length ||
-          key_part->length >= new_part->length || is_equal)
-      {
-        return Compare_keys::NotEqual;
-      }
+    case Compare_keys::Equal:
+      break;
+    case Compare_keys::NotEqual:
+      return Compare_keys::NotEqual;
+    case Compare_keys::EqualButKeyPartLength:
+      DBUG_ASSERT(result != Compare_keys::EqualButComment);
       result= Compare_keys::EqualButKeyPartLength;
+      break;
+    case Compare_keys::EqualButComment:
+      DBUG_ASSERT(result != Compare_keys::EqualButKeyPartLength);
+      result= Compare_keys::EqualButComment;
+      break;
     }
   }
 

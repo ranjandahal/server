@@ -439,6 +439,12 @@ public:
 	can_convert_blob(const Field_blob* field,
 			 const Column_definition& new_field) const override;
 
+	Compare_keys
+	compare_key_parts(const Field& old_field,
+			  const Column_definition& new_field,
+			  const KEY_PART_INFO& old_part,
+			  const KEY_PART_INFO& new_part) const override;
+
 protected:
 	dberr_t innobase_get_autoinc(ulonglong* value);
 	dberr_t innobase_lock_autoinc();
