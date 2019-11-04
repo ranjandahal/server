@@ -2420,8 +2420,13 @@ page_validate(
 	ulint			n_slots;
 	ibool			ret		= FALSE;
 	ulint			i;
-	ulint*			offsets		= NULL;
-	ulint*			old_offsets	= NULL;
+	ulint			offsets_1[REC_OFFS_NORMAL_SIZE];
+	ulint			offsets_2[REC_OFFS_NORMAL_SIZE];
+	ulint*			offsets		= offsets_1;
+	ulint*			old_offsets	= offsets_2;
+
+	rec_offs_init(offsets_1);
+	rec_offs_init(offsets_2);
 
 #ifdef UNIV_GIS_DEBUG
 	if (dict_index_is_spatial(index)) {

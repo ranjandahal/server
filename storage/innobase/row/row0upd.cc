@@ -2687,9 +2687,12 @@ row_upd_clust_rec_by_insert(
 	dtuple_t*	entry;
 	dberr_t		err;
 	rec_t*		rec;
-	ulint*		offsets			= NULL;
+	ulint		offsets_[REC_OFFS_NORMAL_SIZE];
+	ulint*		offsets			= offsets_;
 
 	ut_ad(dict_index_is_clust(index));
+
+	rec_offs_init(offsets_);
 
 	trx = thr_get_trx(thr);
 	table = node->table;
@@ -2718,7 +2721,7 @@ row_upd_clust_rec_by_insert(
 		we update the primary key.  Delete-mark the old record
 		in the clustered index and prepare to insert a new entry. */
 		rec = btr_cur_get_rec(btr_cur);
-		offsets = rec_get_offsets(rec, index, NULL, true,
+		offsets = rec_get_offsets(rec, index, offsets, true,
 					  ULINT_UNDEFINED, &heap);
 		ut_ad(page_rec_is_user_rec(rec));
 

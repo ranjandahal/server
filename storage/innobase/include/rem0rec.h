@@ -92,6 +92,9 @@ significant bit denotes that the tail of a field is stored off-page. */
 offsets[] array, first passed to rec_get_offsets() */
 #define REC_OFFS_NORMAL_SIZE	OFFS_IN_REC_NORMAL_SIZE
 #define REC_OFFS_SMALL_SIZE	10
+#define REC_OFFS_SEC_INDEX_SIZE                                               \
+	(/* PK max key parts */ 16 + /* sec idx max key parts */ 16           \
+	 + /* child page number for non-leaf pages */ 1)
 
 #ifndef UNIV_INNOCHECKSUM
 /******************************************************//**

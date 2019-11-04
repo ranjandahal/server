@@ -2095,9 +2095,11 @@ row_ins_scan_sec_index_for_duplicate(
 	btr_pcur_t	pcur;
 	dberr_t		err		= DB_SUCCESS;
 	ulint		allow_duplicates;
-	ulint*		offsets		= NULL;
+	ulint		offsets_[REC_OFFS_SEC_INDEX_SIZE];
+	ulint*		offsets		= offsets_;
 	DBUG_ENTER("row_ins_scan_sec_index_for_duplicate");
 
+	rec_offs_init(offsets_);
 
 	ut_ad(s_latch == rw_lock_own_flagged(
 			&index->lock, RW_LOCK_FLAG_S | RW_LOCK_FLAG_SX));

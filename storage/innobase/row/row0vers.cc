@@ -90,11 +90,14 @@ row_vers_impl_x_locked_low(
 	mtr_t*		mtr)
 {
 	rec_t*		prev_version = NULL;
-	ulint*		clust_offsets;
+	ulint		clust_offsets_[REC_OFFS_NORMAL_SIZE];
+	ulint*		clust_offsets = clust_offsets_;
 	mem_heap_t*	heap;
 	dtuple_t*	ientry = NULL;
 	mem_heap_t*	v_heap = NULL;
 	dtuple_t*	cur_vrow = NULL;
+
+	rec_offs_init(clust_offsets_);
 
 	DBUG_ENTER("row_vers_impl_x_locked_low");
 
@@ -102,8 +105,8 @@ row_vers_impl_x_locked_low(
 
 	heap = mem_heap_create(1024);
 
-	clust_offsets = rec_get_offsets(
-		clust_rec, clust_index, NULL, true, ULINT_UNDEFINED, &heap);
+	clust_offsets = rec_get_offsets(clust_rec, clust_index, clust_offsets,
+					true, ULINT_UNDEFINED, &heap);
 
 	const trx_id_t trx_id = row_get_rec_trx_id(
 		clust_rec, clust_index, clust_offsets);
@@ -186,7 +189,7 @@ row_vers_impl_x_locked_low(
 		ut_ad(committed || prev_version
 		      || !rec_get_deleted_flag(version, comp));
 
-		/* Free version and clust_offsets. */
+		/* Free version. */
 		mem_heap_free(old_heap);
 
 		if (committed) {
@@ -221,7 +224,7 @@ not_locked:
 		}
 
 		clust_offsets = rec_get_offsets(
-			prev_version, clust_index, NULL, true,
+			prev_version, clust_index, clust_offsets, true,
 			ULINT_UNDEFINED, &heap);
 
 		vers_del = rec_get_deleted_flag(prev_version, comp);
