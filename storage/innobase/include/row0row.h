@@ -31,6 +31,7 @@ Created 4/20/1996 Heikki Tuuri
 #include "ibuf0ibuf.h"
 #include "trx0types.h"
 #include "mtr0mtr.h"
+#include "rem0offset.h"
 #include "rem0types.h"
 #include "row0types.h"
 #include "btr0types.h"
@@ -44,7 +45,7 @@ ulint
 row_get_trx_id_offset(
 /*==================*/
 	const dict_index_t*	index,	/*!< in: clustered index */
-	const ulint*		offsets)/*!< in: record offsets */
+	const offset_t*		offsets)/*!< in: record offsets */
 	MY_ATTRIBUTE((nonnull, warn_unused_result));
 /*********************************************************************//**
 Reads the trx id field from a clustered index record.
@@ -55,7 +56,7 @@ row_get_rec_trx_id(
 /*===============*/
 	const rec_t*		rec,	/*!< in: record */
 	const dict_index_t*	index,	/*!< in: clustered index */
-	const ulint*		offsets)/*!< in: rec_get_offsets(rec, index) */
+	const offset_t*		offsets)/*!< in: rec_get_offsets(rec, index) */
 	MY_ATTRIBUTE((nonnull, warn_unused_result));
 /*********************************************************************//**
 Reads the roll pointer field from a clustered index record.
@@ -66,7 +67,7 @@ row_get_rec_roll_ptr(
 /*=================*/
 	const rec_t*		rec,	/*!< in: record */
 	const dict_index_t*	index,	/*!< in: clustered index */
-	const ulint*		offsets)/*!< in: rec_get_offsets(rec, index) */
+	const offset_t*		offsets)/*!< in: rec_get_offsets(rec, index) */
 	MY_ATTRIBUTE((nonnull, warn_unused_result));
 
 /* Flags for row build type. */
@@ -138,7 +139,7 @@ row_build(
 					this record must be at least
 					s-latched and the latch held
 					as long as the row dtuple is used! */
-	const ulint*		offsets,/*!< in: rec_get_offsets(rec,index)
+	const offset_t*		offsets,/*!< in: rec_get_offsets(rec,index)
 					or NULL, in which case this function
 					will invoke rec_get_offsets() */
 	const dict_table_t*	col_table,
@@ -189,7 +190,7 @@ row_build_w_add_vcol(
 	ulint			type,
 	const dict_index_t*	index,
 	const rec_t*		rec,
-	const ulint*		offsets,
+	const offset_t*		offsets,
 	const dict_table_t*	col_table,
 	const dtuple_t*		add_cols,
 	const dict_add_v_col_t*	add_v,
@@ -206,7 +207,7 @@ row_rec_to_index_entry_low(
 /*=======================*/
 	const rec_t*		rec,	/*!< in: record in the index */
 	const dict_index_t*	index,	/*!< in: index */
-	const ulint*		offsets,/*!< in: rec_get_offsets(rec, index) */
+	const offset_t*		offsets,/*!< in: rec_get_offsets(rec, index) */
 	ulint*			n_ext,	/*!< out: number of externally
 					stored columns */
 	mem_heap_t*		heap)	/*!< in: memory heap from which
@@ -221,7 +222,7 @@ row_rec_to_index_entry(
 /*===================*/
 	const rec_t*		rec,	/*!< in: record in the index */
 	const dict_index_t*	index,	/*!< in: index */
-	const ulint*		offsets,/*!< in/out: rec_get_offsets(rec) */
+	const offset_t*		offsets,/*!< in/out: rec_get_offsets(rec) */
 	ulint*			n_ext,	/*!< out: number of externally
 					stored columns */
 	mem_heap_t*		heap)	/*!< in: memory heap from which
@@ -266,7 +267,7 @@ row_build_row_ref_in_tuple(
 					held as long as the row
 					reference is used! */
 	const dict_index_t*	index,	/*!< in: secondary index */
-	ulint*			offsets,/*!< in: rec_get_offsets(rec, index)
+	offset_t*		offsets,/*!< in: rec_get_offsets(rec, index)
 					or NULL */
 	trx_t*			trx)	/*!< in: transaction or NULL */
 	MY_ATTRIBUTE((nonnull(1,2,3)));
@@ -285,7 +286,7 @@ row_build_row_ref_fast(
 	const rec_t*	rec,	/*!< in: record in the index; must be
 				preserved while ref is used, as we do
 				not copy field values to heap */
-	const ulint*	offsets);/*!< in: array returned by rec_get_offsets() */
+	const offset_t*	offsets);/*!< in: array returned by rec_get_offsets() */
 /***************************************************************//**
 Searches the clustered index record for a row, if we have the row
 reference.

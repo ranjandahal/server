@@ -30,6 +30,7 @@ Created 13/06/2005 Jan Lindstrom
 #include "que0types.h"
 #include "trx0types.h"
 #include "mtr0mtr.h"
+#include "rem0offset.h"
 #include "rem0types.h"
 #include "rem0rec.h"
 #include "btr0types.h"
@@ -489,7 +490,7 @@ row_merge_read_rec(
 	const mrec_t**		mrec,	/*!< out: pointer to merge record,
 					or NULL on end of list
 					(non-NULL on I/O error) */
-	ulint*			offsets,/*!< out: offsets of mrec */
+	offset_t*		offsets,/*!< out: offsets of mrec */
 	row_merge_block_t*	crypt_block, /*!< in: crypt buf or NULL */
 	ulint			space)	   /*!< in: space id */
 	MY_ATTRIBUTE((warn_unused_result));
