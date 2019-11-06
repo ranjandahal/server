@@ -33,3 +33,26 @@ REVOKE EXECUTE ON PROCEDURE sp FROM u;
 --error ER_TABLE_NOT_LOCKED
 REVOKE PROCESS ON *.* FROM u;
 DROP TABLE t1;
+
+--echo #
+--echo # MDEV-20076: SHOW GRANTS does not quote role names properly
+--echo #
+
+create role 'role-1';
+create role 'rock\'n\'roll';
+create user 'user-1'@'localhost';
+create user 'O\'Brien'@'localhost';
+grant select on mysql.user to 'role-1';
+grant select on mysql.user to 'rock\'n\'roll';
+GRANT 'role-1' TO 'user-1'@'localhost';
+GRANT 'rock\'n\'roll' TO 'O\'Brien'@'localhost';
+show grants for 'role-1';
+show grants for 'rock\'n\'roll';
+show grants for 'user-1'@'localhost';
+show grants for 'O\'Brien'@'localhost';
+drop role 'role-1';
+drop role 'rock\'n\'roll';
+drop user 'user-1'@'localhost';
+drop user 'O\'Brien'@'localhost';
+
+--echo # End of 10.3 tests

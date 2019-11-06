@@ -5,8 +5,8 @@ CREATE user boo1;
 GRANT select,create,alter,drop on foo.* to boo1;
 SHOW GRANTS for boo1;
 Grants for boo1@%
-GRANT USAGE ON *.* TO 'boo1'@'%'
-GRANT SELECT, CREATE, DROP, ALTER ON `foo`.* TO 'boo1'@'%'
+GRANT USAGE ON *.* TO `boo1`@`%`
+GRANT SELECT, CREATE, DROP, ALTER ON `foo`.* TO `boo1`@`%`
 CREATE user boo2;
 create database foo;
 CONNECT con1,localhost, boo1,, foo;
