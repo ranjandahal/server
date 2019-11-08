@@ -9566,20 +9566,37 @@ void ha_spider::start_bulk_insert(
 
 int ha_spider::end_bulk_insert()
 {
+  DBUG_ENTER("ha_spider::end_bulk_insert");
+  DBUG_PRINT("info",("spider this=%p", this));
+  DBUG_RETURN(end_bulk_insert_ext(NULL));
+}
+
+int ha_spider::end_bulk_insert_ext(
+  COPY_INFO *copy_info
+) {
   int error_num;
   backup_error_status();
-  DBUG_ENTER("ha_spider::end_bulk_insert");
+  DBUG_ENTER("ha_spider::end_bulk_insert_ext");
   DBUG_PRINT("info",("spider this=%p", this));
   bulk_insert = FALSE;
   if (bulk_size == -1)
     DBUG_RETURN(0);
-  if ((error_num = spider_db_bulk_insert(this, table, TRUE)))
+  if ((error_num = spider_db_bulk_insert(this, table, copy_info, TRUE)))
     DBUG_RETURN(check_error_mode(error_num));
   DBUG_RETURN(0);
 }
 
 int ha_spider::write_row(
   uchar *buf
+) {
+  DBUG_ENTER("ha_spider::write_row");
+  DBUG_PRINT("info",("spider this=%p", this));
+  DBUG_RETURN(write_row_ext(buf, NULL));
+}
+
+int ha_spider::write_row_ext(
+  uchar *buf,
+  COPY_INFO *copy_info
 ) {
   int error_num;
   THD *thd = ha_thd();
@@ -9588,7 +9605,7 @@ int ha_spider::write_row(
   bool auto_increment_flag =
     table->next_number_field && buf == table->record[0];
   backup_error_status();
-  DBUG_ENTER("ha_spider::write_row");
+  DBUG_ENTER("ha_spider::write_row_ext");
   DBUG_PRINT("info",("spider this=%p", this));
   if (spider_param_read_only_mode(thd, share->read_only_mode))
   {
@@ -9716,7 +9733,7 @@ int ha_spider::write_row(
     else
       bulk_size = 0;
   }
-  if ((error_num = spider_db_bulk_insert(this, table, FALSE)))
+  if ((error_num = spider_db_bulk_insert(this, table, copy_info, FALSE)))
     DBUG_RETURN(check_error_mode(error_num));
 
 #ifdef HA_CAN_BULK_ACCESS
@@ -10364,13 +10381,25 @@ int ha_spider::pre_direct_update_rows_init()
 #endif
 
 #ifdef HANDLER_HAS_DIRECT_UPDATE_ROWS_WITH_HS
+#ifdef HA_DIRECT_UPDATE_ROWS_HAS_FOUND_ROWS
+int ha_spider::direct_update_rows(
+  KEY_MULTI_RANGE *ranges,
+  uint range_count,
+  bool sorted,
+  uchar *new_data,
+  ha_rows *update_rows,
+  ha_rows *found_rows
+)
+#else
 int ha_spider::direct_update_rows(
   KEY_MULTI_RANGE *ranges,
   uint range_count,
   bool sorted,
   uchar *new_data,
   ha_rows *update_rows
-) {
+)
+#endif
+{
   int error_num;
   THD *thd = ha_thd();
   backup_error_status();
@@ -10396,17 +10425,30 @@ int ha_spider::direct_update_rows(
     if (is_bulk_access_clone)
     {
       bulk_access_pre_called = FALSE;
+#ifdef HA_DIRECT_UPDATE_ROWS_HAS_FOUND_ROWS
+      DBUG_RETURN(spider_db_bulk_direct_update(this, update_rows, found_rows));
+#else
       DBUG_RETURN(spider_db_bulk_direct_update(this, update_rows));
+#endif
     }
+#ifdef HA_DIRECT_UPDATE_ROWS_HAS_FOUND_ROWS
+    DBUG_RETURN(bulk_access_link_exec_tgt->spider->ha_direct_update_rows(
+      ranges, range_count, sorted, new_data, update_rows, found_rows));
+#else
     DBUG_RETURN(bulk_access_link_exec_tgt->spider->ha_direct_update_rows(
       ranges, range_count, sorted, new_data, update_rows));
+#endif
   }
+#endif
+#ifndef HA_DIRECT_UPDATE_ROWS_HAS_FOUND_ROWS
+  ha_rows found_rows_dummy = 0;
+  ha_rows *found_rows = &found_rows_dummy;
 #endif
   if (
     (active_index != MAX_KEY && (error_num = index_handler_init())) ||
     (active_index == MAX_KEY && (error_num = rnd_handler_init())) ||
     (error_num = spider_db_direct_update(this, table, ranges, range_count,
-      update_rows))
+      update_rows, found_rows))
   )
     DBUG_RETURN(check_error_mode(error_num));
 
@@ -10414,15 +10456,23 @@ int ha_spider::direct_update_rows(
   if (bulk_access_executing && is_bulk_access_clone)
   {
     bulk_req_exec();
-    DBUG_RETURN(spider_db_bulk_direct_update(this, update_rows));
+    DBUG_RETURN(spider_db_bulk_direct_update(this, update_rows, found_rows));
   }
 #endif
   DBUG_RETURN(0);
 }
 #else
+#ifdef HA_DIRECT_UPDATE_ROWS_HAS_FOUND_ROWS
+int ha_spider::direct_update_rows(
+  ha_rows *update_rows,
+  ha_rows *found_rows
+)
+#else
 int ha_spider::direct_update_rows(
   ha_rows *update_rows
-) {
+)
+#endif
+{
   int error_num;
   THD *thd = ha_thd();
   backup_error_status();
@@ -10448,16 +10498,29 @@ int ha_spider::direct_update_rows(
     if (is_bulk_access_clone)
     {
       bulk_access_pre_called = FALSE;
+#ifdef HA_DIRECT_UPDATE_ROWS_HAS_FOUND_ROWS
+      DBUG_RETURN(spider_db_bulk_direct_update(this, update_rows, found_rows));
+#else
       DBUG_RETURN(spider_db_bulk_direct_update(this, update_rows));
+#endif
     }
+#ifdef HA_DIRECT_UPDATE_ROWS_HAS_FOUND_ROWS
+    DBUG_RETURN(bulk_access_link_exec_tgt->spider->ha_direct_update_rows(
+      update_rows, found_rows));
+#else
     DBUG_RETURN(bulk_access_link_exec_tgt->spider->ha_direct_update_rows(
       update_rows));
+#endif
   }
+#endif
+#ifndef HA_DIRECT_UPDATE_ROWS_HAS_FOUND_ROWS
+  ha_rows found_rows_dummy = 0;
+  ha_rows *found_rows = &found_rows_dummy;
 #endif
   if (
     (active_index != MAX_KEY && (error_num = index_handler_init())) ||
     (active_index == MAX_KEY && (error_num = rnd_handler_init())) ||
-    (error_num = spider_db_direct_update(this, table, update_rows))
+    (error_num = spider_db_direct_update(this, table, update_rows, found_rows))
   )
     DBUG_RETURN(check_error_mode(error_num));
 
@@ -10465,7 +10528,7 @@ int ha_spider::direct_update_rows(
   if (bulk_access_executing && is_bulk_access_clone)
   {
     bulk_req_exec();
-    DBUG_RETURN(spider_db_bulk_direct_update(this, update_rows));
+    DBUG_RETURN(spider_db_bulk_direct_update(this, update_rows, found_rows));
   }
 #endif
   DBUG_RETURN(0);
@@ -10474,6 +10537,21 @@ int ha_spider::direct_update_rows(
 
 #ifdef HA_CAN_BULK_ACCESS
 #ifdef HANDLER_HAS_DIRECT_UPDATE_ROWS_WITH_HS
+#ifdef HA_DIRECT_UPDATE_ROWS_HAS_FOUND_ROWS
+int ha_spider::pre_direct_update_rows(
+  KEY_MULTI_RANGE *ranges,
+  uint range_count,
+  bool sorted,
+  uchar *new_data,
+  ha_rows *update_rows,
+  ha_rows *found_rows
+) {
+  DBUG_ENTER("ha_spider::pre_direct_update_rows");
+  DBUG_PRINT("info",("spider this=%p", this));
+  DBUG_RETURN(bulk_access_link_current->spider->ha_direct_update_rows(ranges,
+    range_count, sorted, new_data, update_rows, found_rows));
+}
+#else
 int ha_spider::pre_direct_update_rows(
   KEY_MULTI_RANGE *ranges,
   uint range_count,
@@ -10486,14 +10564,23 @@ int ha_spider::pre_direct_update_rows(
   DBUG_RETURN(bulk_access_link_current->spider->ha_direct_update_rows(ranges,
     range_count, sorted, new_data, update_rows));
 }
+#endif
 #else
 int ha_spider::pre_direct_update_rows()
 {
   uint update_rows;
+#ifdef HA_DIRECT_UPDATE_ROWS_HAS_FOUND_ROWS
+  uint found_rows;
+#endif
   DBUG_ENTER("ha_spider::pre_direct_update_rows");
   DBUG_PRINT("info",("spider this=%p", this));
+#ifdef HA_DIRECT_UPDATE_ROWS_HAS_FOUND_ROWS
+  DBUG_RETURN(bulk_access_link_current->spider->ha_direct_update_rows(
+    &update_rows, &found_rows));
+#else
   DBUG_RETURN(bulk_access_link_current->spider->ha_direct_update_rows(
     &update_rows));
+#endif
 }
 #endif
 #endif

@@ -6575,11 +6575,18 @@ static int wsrep_after_row(THD *thd)
 
 int handler::ha_write_row(uchar *buf)
 {
+  DBUG_ENTER("handler::ha_write_row");
+  DBUG_RETURN(ha_write_row_ext(buf, NULL));
+}
+
+
+int handler::ha_write_row_ext(uchar *buf, COPY_INFO *info)
+{
   int error;
   Log_func *log_func= Write_rows_log_event::binlog_row_logging_function;
   DBUG_ASSERT(table_share->tmp_table != NO_TMP_TABLE ||
               m_lock_type == F_WRLCK || table->file != this);
-  DBUG_ENTER("handler::ha_write_row");
+  DBUG_ENTER("handler::ha_write_row_ext");
   DEBUG_SYNC_C("ha_write_row_start");
 
   MYSQL_INSERT_ROW_START(table_share->db.str, table_share->table_name.str);
@@ -6587,7 +6594,7 @@ int handler::ha_write_row(uchar *buf)
   increment_statistics(&SSV::ha_write_count);
 
   TABLE_IO_WAIT(tracker, m_psi, PSI_TABLE_WRITE_ROW, MAX_KEY, 0,
-                      { error= write_row(buf); })
+                { error= info ? write_row_ext(buf, info) : write_row(buf); })
 
   MYSQL_INSERT_ROW_DONE(error);
   if (likely(!error) && !row_already_logged)
@@ -6722,14 +6729,14 @@ int handler::ha_delete_row(const uchar *buf)
   @retval != 0          Failure.
 */
 
-int handler::ha_direct_update_rows(ha_rows *update_rows)
+int handler::ha_direct_update_rows(ha_rows *update_rows, ha_rows *found_rows)
 {
   int error;
 
   MYSQL_UPDATE_ROW_START(table_share->db.str, table_share->table_name.str);
   mark_trx_read_write();
 
-  error = direct_update_rows(update_rows);
+  error = direct_update_rows(update_rows, found_rows);
   MYSQL_UPDATE_ROW_DONE(error);
   return error;
 }

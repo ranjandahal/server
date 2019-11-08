@@ -543,8 +543,15 @@ public:
   );
 #endif
   int end_bulk_insert();
+  int end_bulk_insert_ext(
+    COPY_INFO *copy_info
+  );
   int write_row(
     uchar *buf
+  );
+  int write_row_ext(
+    uchar *buf,
+    COPY_INFO *copy_info
   );
 #ifdef HA_CAN_BULK_ACCESS
   int pre_write_row(
@@ -661,6 +668,20 @@ public:
 #endif
 #endif
 #ifdef HANDLER_HAS_DIRECT_UPDATE_ROWS_WITH_HS
+#ifdef HA_DIRECT_UPDATE_ROWS_HAS_FOUND_ROWS
+  inline int direct_update_rows(ha_rows *update_rows, ha_rows *found_rows)
+  {
+    return direct_update_rows(NULL, 0, FALSE, NULL, update_rows, found_rows);
+  }
+  int direct_update_rows(
+    KEY_MULTI_RANGE *ranges,
+    uint range_count,
+    bool sorted,
+    uchar *new_data,
+    ha_rows *update_rows,
+    ha_rows *found_row
+  );
+#else
   inline int direct_update_rows(ha_rows *update_rows)
   {
     return direct_update_rows(NULL, 0, FALSE, NULL, update_rows);
@@ -672,25 +693,39 @@ public:
     uchar *new_data,
     ha_rows *update_rows
   );
+#endif
+#else
+#ifdef HA_DIRECT_UPDATE_ROWS_HAS_FOUND_ROWS
+  int direct_update_rows(
+    ha_rows *update_rows,
+    ha_rows *found_row
+  );
 #else
   int direct_update_rows(
     ha_rows *update_rows
   );
+#endif
 #endif
 #ifdef HA_CAN_BULK_ACCESS
 #ifdef HANDLER_HAS_DIRECT_UPDATE_ROWS_WITH_HS
   inline int pre_direct_update_rows()
   {
     ha_rows update_rows;
-
+#ifdef HA_DIRECT_UPDATE_ROWS_HAS_FOUND_ROWS
+    ha_rows found_rows;
+    return pre_direct_update_rows(NULL, 0, FALSE, NULL, &update_rows,
+      &found_rows);
+#else
     return pre_direct_update_rows(NULL, 0, FALSE, NULL, &update_rows);
+#endif
   }
   int pre_direct_update_rows(
     KEY_MULTI_RANGE *ranges,
     uint range_count,
     bool sorted,
     uchar *new_data,
-    ha_rows *update_rows
+    ha_rows *update_rows,
+    ha_rows *found_row
   );
 #else
   int pre_direct_update_rows();
