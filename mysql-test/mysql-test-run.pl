@@ -6254,12 +6254,10 @@ sub strace_arguments {
   my $args= shift;
   my $exe=  shift;
   my $mysqld_name= shift;
-  my $output= sprintf("%s/%s.strace", $opt_vardir, $mysqld_name);
+  my $output= sprintf("%s/log/%s.strace", $path_vardir_trace, $mysqld_name);
 
   mtr_add_arg($args, "-f");
   mtr_add_arg($args, "-o%s", $output);
-
-  $mysqld_logs{$output}= 1;
 
   # Add strace options
   mtr_add_arg($args, '%s', $_) for (@strace_args);
