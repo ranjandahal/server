@@ -81,21 +81,29 @@ The status is stored in the low-order bits. */
 significant bit denotes that the tail of a field is stored off-page. */
 #define REC_2BYTE_EXTERN_MASK	0x4000UL
 
+#ifndef UNIV_INNOCHECKSUM
+static const size_t RECORD_OFFSET = 2;
+static const size_t INDEX_OFFSET
+	= RECORD_OFFSET + sizeof(rec_t*) / sizeof(offset_t);
+#endif /* UNIV_INNOCHECKSUM */
+
+/* Length of the rec_get_offsets() header */
+static const size_t REC_OFFS_HEADER_SIZE =
 #ifdef UNIV_DEBUG
-/* Length of the rec_get_offsets() header */
-# define REC_OFFS_HEADER_SIZE	4
-#else /* UNIV_DEBUG */
-/* Length of the rec_get_offsets() header */
-# define REC_OFFS_HEADER_SIZE	2
+#ifndef UNIV_INNOCHECKSUM
+	sizeof(rec_t*) / sizeof(offset_t)
+	+ sizeof(dict_index_t*) / sizeof(offset_t) +
+#endif /* UNIV_INNOCHECKSUM */
 #endif /* UNIV_DEBUG */
+	2;
 
 /* Number of elements that should be initially allocated for the
 offsets[] array, first passed to rec_get_offsets() */
-#define REC_OFFS_NORMAL_SIZE	OFFS_IN_REC_NORMAL_SIZE
-#define REC_OFFS_SMALL_SIZE	10
-#define REC_OFFS_SEC_INDEX_SIZE                                               \
-	(/* PK max key parts */ 16 + /* sec idx max key parts */ 16           \
-	 + /* child page number for non-leaf pages */ 1)
+static const size_t REC_OFFS_NORMAL_SIZE = 300;
+static const size_t REC_OFFS_SMALL_SIZE = 18;
+static const size_t REC_OFFS_SEC_INDEX_SIZE =
+	/* PK max key parts */ 16 + /* sec idx max key parts */ 16
+	+ /* child page number for non-leaf pages */ 1;
 
 #ifndef UNIV_INNOCHECKSUM
 /******************************************************//**

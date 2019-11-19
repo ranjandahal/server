@@ -1190,7 +1190,7 @@ row_merge_read_rec(
 	ut_ad(b >= &block[0]);
 	ut_ad(b < &block[srv_sort_buf_size]);
 
-	ut_ad(*offsets == 1 + REC_OFFS_HEADER_SIZE
+	ut_ad(rec_offs_get_n_alloc(offsets) == 1 + REC_OFFS_HEADER_SIZE
 	      + dict_index_get_n_fields(index));
 
 	DBUG_ENTER("row_merge_read_rec");
@@ -1297,12 +1297,7 @@ err_exit:
 	memcpy(*buf, b, avail_size);
 	*mrec = *buf + extra_size;
 
-	/* We cannot invoke rec_offs_make_valid() here, because there
-	are no REC_N_NEW_EXTRA_BYTES between extra_size and data_size.
-	Similarly, rec_offs_validate() would fail, because it invokes
-	rec_get_status(). */
-	ut_d(offsets[2] = (ulint) *mrec);
-	ut_d(offsets[3] = (ulint) index);
+	rec_init_offsets_temp(*mrec, index, offsets);
 
 	if (!row_merge_read(fd, ++(*foffs), block,
 			    crypt_block,
@@ -3418,8 +3413,8 @@ row_merge_insert_index_tuples(
 		heap = mem_heap_create(sizeof *buf + i * sizeof *offsets);
 		offsets = static_cast<offset_t*>(
 			mem_heap_alloc(heap, i * sizeof *offsets));
-		offsets[0] = i;
-		offsets[1] = dict_index_get_n_fields(index);
+		rec_offs_set_n_alloc(offsets, i);
+		rec_offs_set_n_fields(offsets, dict_index_get_n_fields(index));
 	}
 
 	if (row_buf != NULL) {

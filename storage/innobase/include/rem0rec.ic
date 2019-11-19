@@ -31,13 +31,13 @@ Created 5/30/1994 Heikki Tuuri
 #include "btr0types.h"
 
 /* Compact flag ORed to the extra size returned by rec_get_offsets() */
-#define REC_OFFS_COMPACT	((ulint) 1 << 31)
+static const offset_t REC_OFFS_COMPACT = 1 << 15;
 /* SQL NULL flag in offsets returned by rec_get_offsets() */
-#define REC_OFFS_SQL_NULL	((ulint) 1 << 31)
+static const offset_t REC_OFFS_SQL_NULL = 1 << 15;
 /* External flag in offsets returned by rec_get_offsets() */
-#define REC_OFFS_EXTERNAL	((ulint) 1 << 30)
+static const offset_t REC_OFFS_EXTERNAL = 1 << 14;
 /* Mask for offsets returned by rec_get_offsets() */
-#define REC_OFFS_MASK		(REC_OFFS_EXTERNAL - 1)
+static const offset_t REC_OFFS_MASK = REC_OFFS_EXTERNAL - 1;
 
 /* Offsets of the bit-fields in an old-style record. NOTE! In the table the
 most significant bytes and bits are written below less significant.
@@ -990,17 +990,17 @@ rec_offs_validate(
 {
 	ulint	i	= rec_offs_n_fields(offsets);
 	ulint	last	= ULINT_MAX;
-	ulint	comp	= *rec_offs_base(offsets) & REC_OFFS_COMPACT;
+	bool	comp	= rec_offs_base(offsets)[0] & REC_OFFS_COMPACT;
 
 	if (rec) {
-		ut_ad((offset_t) rec == offsets[2]);
+		ut_ad(!memcmp(&rec, &offsets[RECORD_OFFSET], sizeof(rec)));
 		if (!comp) {
 			ut_a(rec_get_n_fields_old(rec) >= i);
 		}
 	}
 	if (index) {
 		ulint max_n_fields;
-		ut_ad((offset_t) index == offsets[3]);
+		ut_ad(!memcmp(&index, &offsets[INDEX_OFFSET], sizeof(index)));
 		max_n_fields = ut_max(
 			dict_index_get_n_fields(index),
 			dict_index_get_n_unique_in_tree(index) + 1);
@@ -1048,8 +1048,8 @@ rec_offs_make_valid(
 	ut_ad(index);
 	ut_ad(offsets);
 	ut_ad(rec_get_n_fields(rec, index) >= rec_offs_n_fields(offsets));
-	offsets[2] = (offset_t) rec;
-	offsets[3] = (offset_t) index;
+	memcpy(&offsets[RECORD_OFFSET], &rec, sizeof(rec));
+	memcpy(&offsets[INDEX_OFFSET], &index, sizeof(index));
 }
 #endif /* UNIV_DEBUG */
 

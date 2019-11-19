@@ -259,8 +259,8 @@ rec_init_offsets_comp_ordinary(
 	/* We cannot invoke rec_offs_make_valid() here if temp=true.
 	Similarly, rec_offs_validate() will fail in that case, because
 	it invokes rec_get_status(). */
-	offsets[2] = (offset_t) rec;
-	offsets[3] = (offset_t) index;
+	memcpy(&offsets[RECORD_OFFSET], &rec, sizeof(rec));
+	memcpy(&offsets[INDEX_OFFSET], &index, sizeof(index));
 #endif /* UNIV_DEBUG */
 
 	ut_ad(temp || dict_table_is_comp(index->table));

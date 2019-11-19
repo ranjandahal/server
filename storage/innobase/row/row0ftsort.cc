@@ -1619,8 +1619,8 @@ row_fts_merge_insert(
 			+ dict_index_get_n_fields(index);
 		offsets[i] = static_cast<offset_t*>(mem_heap_zalloc(
 			heap, num * sizeof *offsets[i]));
-		offsets[i][0] = num;
-		offsets[i][1] = dict_index_get_n_fields(index);
+		rec_offs_set_n_alloc(offsets[i], num);
+		rec_offs_set_n_fields(offsets[i], dict_index_get_n_fields(index));
 		block[i] = psort_info[i].merge_block[id];
 		crypt_block[i] = psort_info[i].crypt_block[id];
 		b[i] = psort_info[i].merge_block[id];

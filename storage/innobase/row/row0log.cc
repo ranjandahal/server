@@ -2560,8 +2560,8 @@ row_log_table_apply_ops(
 	UNIV_MEM_INVALID(&mrec_end, sizeof mrec_end);
 
 	offsets = static_cast<offset_t*>(ut_malloc_nokey(i * sizeof *offsets));
-	offsets[0] = i;
-	offsets[1] = dict_index_get_n_fields(index);
+	rec_offs_set_n_alloc(offsets, i);
+	rec_offs_set_n_fields(offsets, dict_index_get_n_fields(index));
 
 	heap = mem_heap_create(UNIV_PAGE_SIZE);
 	offsets_heap = mem_heap_create(UNIV_PAGE_SIZE);
@@ -3438,8 +3438,8 @@ row_log_apply_ops(
 	UNIV_MEM_INVALID(&mrec_end, sizeof mrec_end);
 
 	offsets = static_cast<offset_t*>(ut_malloc_nokey(i * sizeof *offsets));
-	offsets[0] = i;
-	offsets[1] = dict_index_get_n_fields(index);
+	rec_offs_set_n_alloc(offsets, i);
+	rec_offs_set_n_fields(offsets, dict_index_get_n_fields(index));
 
 	offsets_heap = mem_heap_create(UNIV_PAGE_SIZE);
 	heap = mem_heap_create(UNIV_PAGE_SIZE);

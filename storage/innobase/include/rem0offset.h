@@ -18,9 +18,7 @@ this program; if not, write to the Free Software Foundation, Inc.,
 #ifndef rem0offset_h
 #define rem0offset_h
 
-#include <cstddef>
-
 /** This type represents a field offset in a rec_t* */
-typedef size_t offset_t;
+typedef unsigned short int offset_t;
 
-#endif
+#endif // rem0offset_h
