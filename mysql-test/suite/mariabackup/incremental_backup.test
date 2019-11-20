@@ -1,10 +1,13 @@
+--source include/have_aria.inc
 --source include/innodb_page_size.inc
 
 call mtr.add_suppression("InnoDB: New log files created");
 
 let $basedir=$MYSQLTEST_VARDIR/tmp/backup;
 let $incremental_dir=$MYSQLTEST_VARDIR/tmp/backup_inc1;
+let $MYSQLD_DATADIR= `SELECT @@datadir`;
 
+CREATE TABLE t_aria(i INT) ENGINE ARIA;
 CREATE TABLE t(i INT PRIMARY KEY) ENGINE INNODB;
 BEGIN;
 INSERT INTO t VALUES(2);
@@ -21,13 +24,36 @@ INSERT INTO t VALUES(0);
 DELETE FROM t WHERE i=0;
 connection default;
 COMMIT;
+
+INSERT INTO t_aria VALUES
+  (0), (1), (2), (3), (4), (5), (6), (7), (8), (9),
+  (0), (1), (2), (3), (4), (5), (6), (7), (8), (9),
+  (0), (1), (2), (3), (4), (5), (6), (7), (8), (9),
+  (0), (1), (2), (3), (4), (5), (6), (7), (8), (9),
+  (0), (1), (2), (3), (4), (5), (6), (7), (8), (9),
+  (0), (1), (2), (3), (4), (5), (6), (7), (8), (9),
+  (0), (1), (2), (3), (4), (5), (6), (7), (8), (9),
+  (0), (1), (2), (3), (4), (5), (6), (7), (8), (9),
+  (0), (1), (2), (3), (4), (5), (6), (7), (8), (9),
+  (0), (1), (2), (3), (4), (5), (6), (7), (8), (9);
+--let $i = 11
+while ($i) {
+INSERT INTO t_aria SELECT * FROM t_aria;
+--dec $i
+}
+--file_exists $MYSQLD_DATADIR/aria_log.00000002
+
 SELECT * FROM t;
 exec $XTRABACKUP --defaults-file=$MYSQLTEST_VARDIR/my.cnf  --backup --ftwrl-wait-timeout=5 --ftwrl-wait-threshold=300 --ftwrl-wait-query-type=all --target-dir=$incremental_dir --incremental-basedir=$basedir;
+
+--file_exists $incremental_dir/aria_log.00000002
 
 --disable_result_log
 echo # Prepare full backup, apply incremental one;
 exec $XTRABACKUP --prepare --target-dir=$basedir;
 exec $XTRABACKUP --prepare --target-dir=$basedir --incremental-dir=$incremental_dir ;
+
+--file_exists $basedir/aria_log.00000002
 
 disconnect con1;
 echo # Restore and check results;
@@ -37,6 +63,7 @@ let $targetdir=$basedir;
 
 SELECT * FROM t;
 DROP TABLE t;
+DROP TABLE t_aria;
 
 # Cleanup
 rmdir $basedir;
