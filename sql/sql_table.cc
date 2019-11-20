@@ -7703,6 +7703,7 @@ static bool mysql_inplace_alter_table(THD *thd,
   if (table->file->ha_prepare_inplace_alter_table(altered_table,
                                                   ha_alter_info))
     goto rollback;
+  //OLTODO
 
   /*
     Downgrade the lock if storage engine has told us that exclusive lock was
@@ -9379,6 +9380,8 @@ bool mysql_alter_table(THD *thd, const LEX_CSTRING *new_db,
                        uint order_num, ORDER *order, bool ignore)
 {
   bool engine_changed;
+  char send_query[thd->query_length() + 20];
+  bool partial_alter= false;
   DBUG_ENTER("mysql_alter_table");
 
   /*
@@ -10161,6 +10164,23 @@ do_continue:;
   if (lock_tables(thd, table_list, alter_ctx.tables_opened,
                   MYSQL_LOCK_USE_MALLOC))
     goto err_new_table_cleanup;
+//OLTODO
+  /* We got the locks, Lets send slave ALTER PHASE 1 
+  trans_xa_start(thd);
+  write_bin_log(thd, FALSE, thd->query(), thd->query_length());
+  trans_xa_end(thd);
+
+  //Create query START + thread_id + thd->query_str
+  send_query.append(STRING_WITH_LEN("START "));
+  send_query.append(thd->thread_id, 4);
+  send_query.append(" ");
+  Vsend_query.append(thd->query());
+  */
+  sprintf(send_query, "START %d %s", thd->thread_id, thd->query());
+  if (        write_bin_log(thd, FALSE, send_query, strlen(send_query)))
+    DBUG_RETURN(true);
+  else
+    partial_alter= true;
 
   if (ha_create_table(thd, alter_ctx.get_tmp_path(),
                       alter_ctx.new_db.str, alter_ctx.new_name.str,
@@ -10258,9 +10278,15 @@ do_continue:;
                                     &alter_ctx.new_name))
       goto err_new_table_cleanup;
     /* We don't replicate alter table statement on temporary tables */
-    if (!thd->is_current_stmt_binlog_format_row() &&
+    if (!thd->is_current_stmt_binlog_format_row() && !partial_alter &&
         write_bin_log(thd, true, thd->query(), thd->query_length()))
       DBUG_RETURN(true);
+    if (partial_alter)
+    {
+      sprintf(send_query, "COMMIT %d ALTER", thd->thread_id);
+      if(write_bin_log(thd, FALSE, send_query, strlen(send_query)))
+        DBUG_RETURN(true);
+    }
     my_free(const_cast<uchar*>(frm.str));
     goto end_temporary;
   }
@@ -10441,7 +10467,13 @@ end_inplace:
   DBUG_ASSERT(!(mysql_bin_log.is_open() &&
                 thd->is_current_stmt_binlog_format_row() &&
                 (create_info->tmp_table())));
-  if (write_bin_log(thd, true, thd->query(), thd->query_length()))
+  if (partial_alter)
+  {
+    sprintf(send_query, "COMMIT %d ALTER", thd->thread_id);
+    if(write_bin_log(thd, FALSE, send_query, strlen(send_query)))
+      DBUG_RETURN(true);
+  }
+  else if (write_bin_log(thd, true, thd->query(), thd->query_length()))
     DBUG_RETURN(true);
 
   table_list->table= NULL;			// For query cache
@@ -10504,6 +10536,7 @@ err_with_mdl_after_alter:
     expects that error is set
   */
   write_bin_log(thd, FALSE, thd->query(), thd->query_length());
+//OLTODO
 
 err_with_mdl:
   /*

@@ -17981,6 +17981,12 @@ commit:
             lex->tx_chain= $3;
             lex->tx_release= $4;
           }
+          COMMIT_SYM ulonglong_num ALTER
+          {
+            LEX *lex=Lex;
+            lex->sql_command= SQLCOM_COMMIT_PREVIOUS;
+            lex->previous_commit_id= $2;
+          }
         ;
 
 rollback:
